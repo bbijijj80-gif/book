@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактор Книжек</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .toolbar {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .toolbar button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .toolbar button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .toolbar input[type="file"] {
+            display: none;
+        }
+
+        .book-container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-editor {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 400px;
+        }
+
+        .page-editor textarea {
+            width: 100%;
+            min-height: 150px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            font-size: 16px;
+            resize: vertical;
+            margin-top: 15px;
+        }
+
+        .page-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin: 15px 0;
+            display: block;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .navigation button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .navigation button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .page-indicator {
+            font-size: 18px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .modal-content input,
+        .modal-content textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .sample-books {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .sample-book {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .sample-book:hover {
+            background: #667eea;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .folder-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .folder-tab {
+            padding: 10px 20px;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .folder-tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .file-list {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .file-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-actions button {
+            margin-left: 5px;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .btn-edit { background: #4CAF50; }
+        .btn-delete { background: #f44336; }
+        .btn-open { background: #2196F3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 Редактор Книжек</h1>
+
+        <div class="toolbar">
+            <button onclick="createNewBook()">➕ Новая книга</button>
+            <button onclick="document.getElementById('fileInput').click()">📂 Открыть .book</button>
+            <input type="file" id="fileInput" accept=".book" onchange="loadBookFile(event)">
+            <button onclick="saveBook()">💾 Сохранить книгу</button>
+            <button onclick="showSampleBooks()">📖 Образцы книг</button>
+            <button onclick="toggleEditMode()">✏️ Режим редактирования</button>
+        </div>
+
+        <div class="folder-tabs">
+            <button class="folder-tab active" onclick="switchFolder('windows')">Windows</button>
+            <button class="folder-tab" onclick="switchFolder('linux')">Linux</button>
+            <button class="folder-tab" onclick="switchFolder('macos')">macOS</button>
+            <button class="folder-tab" onclick="switchFolder('pkg')">PKG</button>
+        </div>
+
+        <div class="file-list" id="fileList">
+            <h3>Сохранённые книги</h3>
+            <div id="filesContainer"></div>
+        </div>
+
+        <div class="book-container" id="bookContainer" style="display: none;">
+            <div class="navigation">
+                <button onclick="previousPage()" id="prevBtn">← Назад</button>
+                <span class="page-indicator" id="pageIndicator">Страница 1 из 6</span>
+                <button onclick="nextPage()" id="nextBtn">Вперёд →</button>
+            </div>
+
+            <div id="pagesContainer"></div>
+
+            <div class="navigation">
+                <button onclick="addPage()" id="addPageBtn" style="display: none;">+ Добавить страницу</button>
+                <button onclick="deletePage()" id="deletePageBtn" style="display: none; background: #f44336;">🗑️ Удалить страницу</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for new book -->
+    <div class="modal" id="newBookModal">
+        <div class="modal-content">
+            <h2>Создать новую книгу</h2>
+            <input type="text" id="bookTitle" placeholder="Название книги">
+            <textarea id="bookDescription" placeholder="Описание (необязательно)" rows="3"></textarea>
+            <div style="margin-top: 20px;">
+                <button onclick="confirmNewBook()" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Создать</button>
+                <button onclick="closeModal('newBookModal')" style="background: #ccc; color: #333; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-left: 10px;">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for sample books -->
+    <div class="modal" id="sampleModal">
+        <div class="modal-content">
+            <h2>📖 Выберите образец книги</h2>
+            <div class="sample-books" id="sampleBooksContainer"></div>
+            <button onclick="closeModal('sampleModal')" style="margin-top: 20px; background: #ccc; color: #333; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%;">Закрыть</button>
+        </div>
+    </div>
+
+    <script>
+        let currentBook = null;
+        let currentPage = 0;
+        let editMode = false;
+        let currentFolder = 'windows';
+        let savedBooks = JSON.parse(localStorage.getItem('savedBooks') || '{}');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            updateFileList();
+        });
+
+        function switchFolder(folder) {
+            currentFolder = folder;
+            document.querySelectorAll('.folder-tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.textContent.toLowerCase().includes(folder)) {
+                    tab.classList.add('active');
+                }
+            });
+            updateFileList();
+        }
+
+        function updateFileList() {
+            const container = document.getElementById('filesContainer');
+            const folderBooks = savedBooks[currentFolder] || [];
+            
+            if (folderBooks.length === 0) {
+                container.innerHTML = '<p style="color: #999; text-align: center;">Нет сохранённых книг в этой папке</p>';
+                return;
+            }
+
+            container.innerHTML = folderBooks.map((book, index) => `
+                <div class="file-item">
+                    <div>
+                        <strong>${book.title}</strong>
+                        <br><small>${book.pages ? book.pages.length : 0} страниц | ${new Date(book.savedAt).toLocaleDateString()}</small>
+                    </div>
+                    <div class="file-actions">
+                        <button class="btn-open" onclick="openSavedBook(${index})">Открыть</button>
+                        <button class="btn-delete" onclick="deleteSavedBook(${index})">Удалить</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function createNewBook() {
+            document.getElementById('newBookModal').classList.add('active');
+        }
+
+        function confirmNewBook() {
+            const title = document.getElementById('bookTitle').value.trim();
+            if (!title) {
+                alert('Введите название книги!');
+                return;
+            }
+
+            currentBook = {
+                title: title,
+                description: document.getElementById('bookDescription').value.trim(),
+                pages: [
+                    { text: '', image: null }
+                ],
+                savedAt: new Date().toISOString()
+            };
+
+            currentPage = 0;
+            editMode = true;
+            renderBook();
+            closeModal('newBookModal');
+            document.getElementById('bookContainer').style.display = 'block';
+        }
+
+        function renderBook() {
+            if (!currentBook) return;
+
+            const container = document.getElementById('pagesContainer');
+            const page = currentBook.pages[currentPage];
+
+            container.innerHTML = `
+                <div class="page active">
+                    <div class="page-editor">
+                        ${page.image ? `<img src="${page.image}" class="page-image" alt="Illustration">` : ''}
+                        ${editMode ? `
+                            <label style="display: inline-block; background: #667eea; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 10px 0;">
+                                📷 Загрузить картинку
+                                <input type="file" accept="image/*" onchange="uploadImage(event)" style="display: none;">
+                            </label>
+                            <button onclick="removeImage()" style="background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 10px 0;">❌ Удалить картинку</button>
+                        ` : ''}
+                        <textarea 
+                            placeholder="${editMode ? 'Введите текст страницы...' : ''}" 
+                            ${editMode ? '' : 'readonly'}
+                            onchange="updatePageText(this.value)"
+                        >${page.text}</textarea>
+                    </div>
+                </div>
+            `;
+
+            updateNavigation();
+        }
+
+        function uploadImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentBook.pages[currentPage].image = e.target.result;
+                    renderBook();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function removeImage() {
+            currentBook.pages[currentPage].image = null;
+            renderBook();
+        }
+
+        function updatePageText(text) {
+            currentBook.pages[currentPage].text = text;
+        }
+
+        function updateNavigation() {
+            document.getElementById('pageIndicator').textContent = `Страница ${currentPage + 1} из ${currentBook.pages.length}`;
+            document.getElementById('prevBtn').disabled = currentPage === 0;
+            document.getElementById('nextBtn').disabled = currentPage === currentBook.pages.length - 1;
+            document.getElementById('addPageBtn').style.display = editMode ? 'inline-block' : 'none';
+            document.getElementById('deletePageBtn').style.display = editMode && currentBook.pages.length > 1 ? 'inline-block' : 'none';
+        }
+
+        function nextPage() {
+            if (currentPage < currentBook.pages.length - 1) {
+                currentPage++;
+                renderBook();
+            }
+        }
+
+        function previousPage() {
+            if (currentPage > 0) {
+                currentPage--;
+                renderBook();
+            }
+        }
+
+        function addPage() {
+            currentBook.pages.push({ text: '', image: null });
+            currentPage = currentBook.pages.length - 1;
+            renderBook();
+        }
+
+        function deletePage() {
+            if (currentBook.pages.length > 1) {
+                if (confirm('Удалить эту страницу?')) {
+                    currentBook.pages.splice(currentPage, 1);
+                    if (currentPage >= currentBook.pages.length) {
+                        currentPage = currentBook.pages.length - 1;
+                    }
+                    renderBook();
+                }
+            }
+        }
+
+        function saveBook() {
+            if (!currentBook) {
+                alert('Нет открытой книги для сохранения!');
+                return;
+            }
+
+            if (!savedBooks[currentFolder]) {
+                savedBooks[currentFolder] = [];
+            }
+
+            const existingIndex = savedBooks[currentFolder].findIndex(b => b.title === currentBook.title);
+            currentBook.savedAt = new Date().toISOString();
+
+            if (existingIndex >= 0) {
+                savedBooks[currentFolder][existingIndex] = currentBook;
+            } else {
+                savedBooks[currentFolder].push(currentBook);
+            }
+
+            localStorage.setItem('savedBooks', JSON.stringify(savedBooks));
+            updateFileList();
+            alert(`Книга "${currentBook.title}" сохранена в папку ${currentFolder}!`);
+        }
+
+        function openSavedBook(index) {
+            currentBook = JSON.parse(JSON.stringify(savedBooks[currentFolder][index]));
+            currentPage = 0;
+            editMode = false;
+            document.getElementById('bookContainer').style.display = 'block';
+            renderBook();
+        }
+
+        function deleteSavedBook(index) {
+            if (confirm('Вы уверены, что хотите удалить эту книгу?')) {
+                savedBooks[currentFolder].splice(index, 1);
+                localStorage.setItem('savedBooks', JSON.stringify(savedBooks));
+                updateFileList();
+            }
+        }
+
+        function loadBookFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        currentBook = JSON.parse(e.target.result);
+                        currentPage = 0;
+                        editMode = true;
+                        document.getElementById('bookContainer').style.display = 'block';
+                        renderBook();
+                        alert(`Книга "${currentBook.title}" загружена!`);
+                    } catch (error) {
+                        alert('Ошибка при загрузке файла!');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function saveBookToFile() {
+            if (!currentBook) {
+                alert('Нет книги для экспорта!');
+                return;
+            }
+
+            const dataStr = JSON.stringify(currentBook, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${currentBook.title.replace(/[^a-z0-9]/gi, '_')}.book`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function toggleEditMode() {
+            if (!currentBook) {
+                alert('Сначала откройте или создайте книгу!');
+                return;
+            }
+            editMode = !editMode;
+            renderBook();
+            alert(editMode ? 'Режим редактирования включён' : 'Режим чтения включён');
+        }
+
+        function showSampleBooks() {
+            const container = document.getElementById('sampleBooksContainer');
+            container.innerHTML = `
+                <div class="sample-book" onclick="loadSampleBook('future')">
+                    <h3>🚀 Путешествие в будущее</h3>
+                    <p>История о технологиях завтрашнего дня</p>
+                    <small>6 страниц</small>
+                </div>
+                <div class="sample-book" onclick="loadSampleBook('space')">
+                    <h3>🌟 Космические приключения</h3>
+                    <p>Путешествие к звёздам</p>
+                    <small>6 страниц</small>
+                </div>
+                <div class="sample-book" onclick="loadSampleBook('nature')">
+                    <h3>🌿 Чудеса природы</h3>
+                    <p>Удивительный мир вокруг нас</p>
+                    <small>6 страниц</small>
+                </div>
+            `;
+            document.getElementById('sampleModal').classList.add('active');
+        }
+
+        function loadSampleBook(type) {
+            const samples = {
+                future: {
+                    title: 'Путешествие в будущее',
+                    description: 'История о технологиях завтрашнего дня',
+                    pages: [
+                        {
+                            text: 'Глава 1: Начало пути\n\n2050 год. Алекс проснулся в своей умной капсуле, которая мягко разбудила его симуляцией рассвета. За окном парили летающие автомобили, а небо было чистым благодаря экологическим куполам.',
+                            image: generatePlaceholder('city')
+                        },
+                        {
+                            text: 'Глава 2: Утро будущего\n\nЗавтрак приготовил робот-помощник. Еда была напечатана на 3D-принтере с учётом всех необходимых витаминов. Алекс проверил новости через нейроинтерфейс — прямая связь с интернетом!',
+                            image: generatePlaceholder('robot')
+                        },
+                        {
+                            text: 'Глава 3: Работа в виртуальности\n\nАлекс работал архитектором виртуальных миров. Он надевал лёгкий шлем и оказывался в цифровом пространстве, где создавал целые города силой мысли.',
+                            image: generatePlaceholder('vr')
+                        },
+                        {
+                            text: 'Глава 4: Обед с друзьями\n\nВ обеденный перерыв Алекс встретился с друзьями в голографическом кафе. Они могли быть в разных странах, но чувствовали себя рядом благодаря технологии полного присутствия.',
+                            image: generatePlaceholder('friends')
+                        },
+                        {
+                            text: 'Глава 5: Вечерние открытия\n\nПосле работы Алекс посетил музей космических достижений. Люди уже колонизировали Марс и добывали ресурсы на астероидах. Мечты становились реальностью!',
+                            image: generatePlaceholder('space')
+                        },
+                        {
+                            text: 'Глава 6: Надежды на завтра\n\nЛожась спать, Алекс думал о том, какое будущее ждёт его детей. Мир стал лучше благодаря технологиям и заботе о планете. Завтра начнётся новое приключение!',
+                            image: generatePlaceholder('stars')
+                        }
+                    ]
+                },
+                space: {
+                    title: 'Космические приключения',
+                    description: 'Путешествие к звёздам',
+                    pages: [
+                        { text: 'Глава 1: Старт ракеты', image: generatePlaceholder('rocket') },
+                        { text: 'Глава 2: Невесомость', image: generatePlaceholder('space') },
+                        { text: 'Глава 3: Лунная база', image: generatePlaceholder('moon') },
+                        { text: 'Глава 4: Марсианский пейзаж', image: generatePlaceholder('mars') },
+                        { text: 'Глава 5: Глубокий космос', image: generatePlaceholder('galaxy') },
+                        { text: 'Глава 6: Возвращение домой', image: generatePlaceholder('earth') }
+                    ]
+                },
+                nature: {
+                    title: 'Чудеса природы',
+                    description: 'Удивительный мир вокруг нас',
+                    pages: [
+                        { text: 'Глава 1: Утренний лес', image: generatePlaceholder('forest') },
+                        { text: 'Глава 2: Горные вершины', image: generatePlaceholder('mountain') },
+                        { text: 'Глава 3: Океанские глубины', image: generatePlaceholder('ocean') },
+                        { text: 'Глава 4: Пустынные дюны', image: generatePlaceholder('desert') },
+                        { text: 'Глава 5: Полярное сияние', image: generatePlaceholder('aurora') },
+                        { text: 'Глава 6: Цветущий сад', image: generatePlaceholder('garden') }
+                    ]
+                }
+            };
+
+            currentBook = JSON.parse(JSON.stringify(samples[type]));
+            currentPage = 0;
+            editMode = true;
+            document.getElementById('bookContainer').style.display = 'block';
+            renderBook();
+            closeModal('sampleModal');
+        }
+
+        function generatePlaceholder(type) {
+            const colors = {
+                city: '667eea',
+                robot: '764ba2',
+                vr: 'f093fb',
+                friends: 'f5576c',
+                space: '4facfe',
+                stars: '43e97b',
+                rocket: 'fa709a',
+                moon: 'fee140',
+                mars: 'fa709a',
+                galaxy: 'a18cd1',
+                earth: '4facfe',
+                forest: '43e97b',
+                mountain: 'a18cd1',
+                ocean: '4facfe',
+                desert: 'fee140',
+                aurora: 'f093fb',
+                garden: '43e97b'
+            };
+            return `https://placehold.co/600x400/${colors[type] || '667eea'}/ffffff?text=${encodeURIComponent(type)}`;
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // Close modals on outside click
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('active');
+            }
+        }
+    </script>
+</body>
+</html>
