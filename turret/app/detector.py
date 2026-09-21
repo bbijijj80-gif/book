@@ -4,6 +4,10 @@ from typing import List
 import cv2
 import numpy as np
 
+# Порядок и названия классов заданы обучающим датасетом (VOC0712) и должны
+# оставаться как в оригинале (на английском) - от них зависит индекс класса
+# "person" в выходе сети. Это данные модели, а не текст интерфейса, поэтому
+# не переводим.
 VOC_CLASSES = [
     "background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus",
     "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike",
@@ -30,9 +34,9 @@ class Detection:
 
 
 class PersonDetector:
-    """Person detector using the MobileNet-SSD (Caffe) model via OpenCV's DNN
-    module. Chosen for CPU-only inference on a Raspberry Pi 4 - no GPU/PyTorch
-    dependency needed. See models/README.md to fetch the weight files."""
+    """Детектор людей на базе MobileNet-SSD (Caffe) через модуль DNN OpenCV.
+    Выбран для инференса на CPU без GPU - на Raspberry Pi 4 не нужны PyTorch
+    и видеоускорение. Файлы весов - см. models/README.md."""
 
     def __init__(self, prototxt, model, confidence_threshold=0.5, resize=300):
         self.net = cv2.dnn.readNetFromCaffe(prototxt, model)

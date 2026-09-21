@@ -2,6 +2,6 @@ __pycache__/
 *.pyc
 .venv/
 
-# Model weights are fetched via scripts/download_model.sh, not committed.
+# Веса модели скачиваются через scripts/download_model.sh, в git не хранятся.
 models/*.prototxt
 models/*.caffemodel

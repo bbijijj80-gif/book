@@ -8,9 +8,9 @@ logger = logging.getLogger("turret.trigger")
 
 
 class Trigger:
-    """Drives a relay/MOSFET module wired into the Nerf blaster's trigger
-    circuit. Starts disarmed; call arm() explicitly (the web UI's ARM switch
-    does this) before fire() will do anything."""
+    """Управляет модулем реле/MOSFET, врезанным в цепь спуска Nerf-бластера.
+    Стартует в состоянии "не взведено"; чтобы fire() сработал, нужно явно
+    вызвать arm() (это делает переключатель ВЗВЕДЕНО в веб-интерфейсе)."""
 
     def __init__(self, pin, active_high=True, fire_duration_ms=250,
                  cooldown_ms=900, burst_count=1, burst_interval_ms=180,
@@ -35,18 +35,18 @@ class Trigger:
 
     def arm(self):
         self._armed = True
-        logger.info("ARMED")
+        logger.info("ВЗВЕДЕНО")
 
     def disarm(self):
         self._armed = False
-        logger.info("DISARMED")
+        logger.info("НЕ ВЗВЕДЕНО")
 
     def ready(self):
         return self._armed and (time.monotonic() - self._last_fire_end) >= self.cooldown
 
-    def fire(self, reason="manual"):
-        """Blocking burst fire - call from a worker thread, never from the
-        video/control loop, since it sleeps for the shot duration."""
+    def fire(self, reason="ручной"):
+        """Блокирующий выстрел очередью - вызывать из рабочего потока, а не
+        из цикла видео/управления, так как метод "спит" на время выстрела."""
         if not self._lock.acquire(blocking=False):
             return False
         try:
@@ -55,13 +55,13 @@ class Trigger:
             if (time.monotonic() - self._last_fire_end) < self.cooldown:
                 return False
 
-            logger.info("fire burst start reason=%s shots=%d", reason, self.burst_count)
+            logger.info("начало очереди: причина=%s выстрелов=%d", reason, self.burst_count)
             started_at = time.monotonic()
             for shot in range(self.burst_count):
                 if not self._armed:
                     break
                 if time.monotonic() - started_at > self.max_continuous_fire_seconds:
-                    logger.warning("fire burst aborted: max_continuous_fire_seconds exceeded")
+                    logger.warning("очередь прервана: превышен max_continuous_fire_seconds")
                     break
                 self._out.on()
                 time.sleep(self.fire_duration)
@@ -77,4 +77,4 @@ class Trigger:
     def emergency_stop(self):
         self._out.off()
         self._armed = False
-        logger.warning("EMERGENCY STOP")
+        logger.warning("АВАРИЙНЫЙ СТОП")

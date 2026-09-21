@@ -5,12 +5,13 @@ from gpiozero import DigitalOutputDevice
 
 
 class StepperAxis:
-    """Velocity-controlled pan axis for a NEMA17 driven through a STEP/DIR
-    stepper driver (A4988 / DRV8825 / TMC2209-compatible pinout).
+    """Ось азимута (поворот влево-вправо) с управлением по скорости для
+    NEMA17 через STEP/DIR-драйвер (совместим по распиновке с
+    A4988 / DRV8825 / TMC2209).
 
-    This bit-bangs STEP pulses from a Python thread, which is precise enough
-    to smoothly follow a person at camera-tracking speeds but is not a
-    hard-realtime pulse generator - don't expect CNC-grade timing."""
+    Импульсы STEP генерируются программно из потока Python - этого достаточно
+    для плавного слежения за человеком, но это не аппаратный генератор
+    реального времени, точности уровня ЧПУ ждать не стоит."""
 
     def __init__(self, step_pin, dir_pin, enable_pin=None, enable_active_low=True,
                  min_steps_per_sec=30, max_steps_per_sec=1000, soft_limit_steps=None,
@@ -27,7 +28,7 @@ class StepperAxis:
         self.max_speed = max_steps_per_sec
         self.soft_limit_steps = soft_limit_steps
 
-        self._target_speed = 0.0  # signed steps/sec
+        self._target_speed = 0.0  # знаковая скорость, шаг/сек
         self._position = 0
         self._lock = threading.Lock()
         self._running = False

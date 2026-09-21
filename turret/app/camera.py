@@ -5,8 +5,9 @@ import cv2
 
 
 class CameraStream:
-    """Threaded reader for a USB (UVC) webcam so frame capture never blocks the
-    detection/control loop on a slow cv2.VideoCapture.read()."""
+    """Потоковый читатель кадров с USB (UVC) веб-камеры: захват идёт в
+    отдельном потоке, чтобы медленный cv2.VideoCapture.read() не тормозил
+    цикл детекции и управления."""
 
     def __init__(self, index=0, width=640, height=480, fps=30):
         self.cap = cv2.VideoCapture(index)
@@ -15,13 +16,13 @@ class CameraStream:
         self.cap.set(cv2.CAP_PROP_FPS, fps)
         if not self.cap.isOpened():
             raise RuntimeError(
-                f"Could not open camera index {index}. "
-                f"Check `ls /dev/video*` and that no other process is using it."
+                f"Не удалось открыть камеру с индексом {index}. "
+                f"Проверьте `ls /dev/video*` и что камера не занята другим процессом."
             )
 
         ok, frame = self.cap.read()
         if not ok:
-            raise RuntimeError("Camera opened but failed to read an initial frame.")
+            raise RuntimeError("Камера открылась, но не удалось прочитать первый кадр.")
 
         self._lock = threading.Lock()
         self._frame = frame

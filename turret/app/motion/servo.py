@@ -2,7 +2,7 @@ from gpiozero import AngularServo
 
 
 class TiltAxis:
-    """Small hobby servo (SG90/MG90S-class) driving the tilt (up/down) axis."""
+    """Небольшой хобби-сервопривод (класса SG90/MG90S) - ось наклона (вверх-вниз)."""
 
     def __init__(self, pin, min_angle=30, max_angle=150, center_angle=90,
                  min_pulse_width=0.0005, max_pulse_width=0.0025, pin_factory=None):

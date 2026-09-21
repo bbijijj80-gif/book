@@ -19,7 +19,7 @@ class TrackingController:
         self.lock_frames_required = lock_frames_required
         self.auto_fire_enabled = auto_fire_enabled
 
-        self.mode = "auto"  # "auto" | "manual"
+        self.mode = "auto"  # допустимые значения: "auto" | "manual" (как в веб-API)
         self._lock_streak = 0
         self._running = False
         self._thread = None
@@ -103,7 +103,7 @@ class TrackingController:
                     err_y = ty - cy
 
                     pan_cmd = self.pan_pid.update(err_x)
-                    tilt_cmd = self.tilt_pid.update(-err_y)  # image Y grows downward
+                    tilt_cmd = self.tilt_pid.update(-err_y)  # ось Y кадра растёт вниз - знак инвертирован
 
                     self.pan_axis.set_speed(pan_cmd)
                     self.tilt_axis.nudge(tilt_cmd)
@@ -116,7 +116,7 @@ class TrackingController:
 
                     if locked and self.auto_fire_enabled and self.trigger.ready():
                         threading.Thread(
-                            target=self.trigger.fire, kwargs={"reason": "auto"}, daemon=True
+                            target=self.trigger.fire, kwargs={"reason": "авто"}, daemon=True
                         ).start()
                 else:
                     self.pan_axis.set_speed(0)
@@ -142,6 +142,9 @@ class TrackingController:
                 })
 
     def _draw_hud(self, frame, cx, cy, detections, target, locked):
+        # Подписи рисуются встроенным шрифтом OpenCV (Hershey), который не
+        # поддерживает кириллицу, поэтому "LOCK" намеренно остаётся латиницей.
+        # Русский текст интерфейса - в HTML/JS (там это обычный текст браузера).
         for d in detections:
             color = (0, 220, 0) if d is target else (90, 90, 90)
             cv2.rectangle(frame, (d.x1, d.y1), (d.x2, d.y2), color, 2)

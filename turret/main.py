@@ -25,8 +25,8 @@ def build_pin_factory(name):
             return PIGPIOFactory()
         except Exception as exc:
             logger.warning(
-                "pigpio pin factory unavailable (%s); falling back to gpiozero's "
-                "default backend. For smoother servo/stepper timing run: "
+                "фабрика пинов pigpio недоступна (%s); использую бэкенд gpiozero "
+                "по умолчанию. Для более плавной работы сервы/шаговика запустите: "
                 "sudo apt install pigpio && sudo systemctl enable --now pigpiod",
                 exc,
             )
@@ -101,7 +101,7 @@ def main():
     ).start()
 
     def shutdown():
-        logger.info("Shutting down...")
+        logger.info("Завершение работы...")
         controller.stop()
         pan_axis.stop()
         trigger.emergency_stop()

@@ -52,7 +52,7 @@ def create_app(controller, trigger, pan_axis, tilt_axis, tilt_center_angle):
             return jsonify({"ok": False, "reason": "disarmed"}), 409
         if not trigger.ready():
             return jsonify({"ok": False, "reason": "cooldown"}), 409
-        threading.Thread(target=trigger.fire, kwargs={"reason": "manual"}, daemon=True).start()
+        threading.Thread(target=trigger.fire, kwargs={"reason": "ручной"}, daemon=True).start()
         return jsonify({"ok": True})
 
     @app.route("/api/center", methods=["POST"])

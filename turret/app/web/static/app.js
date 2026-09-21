@@ -45,7 +45,7 @@
     armed = newArmed;
     els.armToggle.classList.toggle("armed", armed);
     els.armToggle.classList.toggle("safe", !armed);
-    els.armLabel.textContent = armed ? "ARMED" : "DISARMED";
+    els.armLabel.textContent = armed ? "ВЗВЕДЕНО" : "НЕ ВЗВЕДЕНО";
     els.btnFire.disabled = !armed;
   }
 
@@ -72,7 +72,7 @@
 
   els.armToggle.addEventListener("click", async () => {
     const next = !armed;
-    if (next && !confirm("Перевести турель в боевой режим ARMED? Она сможет стрелять автоматически.")) {
+    if (next && !confirm("Перевести турель во взведённое состояние? Она сможет стрелять автоматически.")) {
       return;
     }
     const res = await postJSON("/api/arm", { armed: next });
@@ -99,7 +99,7 @@
     applyMode("manual");
   });
 
-  // Joystick: drag to send manual pan/tilt commands.
+  // Джойстик: перетаскивание отправляет команды ручного наведения (азимут/наклон).
   let dragging = false;
   let sendTimer = null;
   const MAX_PAN_SPEED = 500;
