@@ -1,0 +1,17 @@
+[Unit]
+Description=Auto Turret - person tracking pan/tilt controller
+After=network-online.target pigpiod.service
+Wants=network-online.target
+# Remove the next line if you're not using the pigpio pin factory.
+Requires=pigpiod.service
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/book/turret
+ExecStart=/home/pi/book/turret/.venv/bin/python /home/pi/book/turret/main.py
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
