@@ -10,6 +10,7 @@
     armToggle: document.getElementById("arm-toggle"),
     armLabel: document.getElementById("arm-label"),
     modeToggle: document.getElementById("mode-toggle"),
+    noDetectorHint: document.getElementById("no-detector-hint"),
     joystick: document.getElementById("joystick"),
     joystickKnob: document.getElementById("joystick-knob"),
     btnCenter: document.getElementById("btn-center"),
@@ -19,6 +20,7 @@
 
   let armed = false;
   let mode = "auto";
+  let detectionAvailable = true;
 
   async function postJSON(url, body) {
     try {
@@ -49,6 +51,13 @@
     els.btnFire.disabled = !armed;
   }
 
+  function applyDetectionAvailable(available) {
+    detectionAvailable = available;
+    const autoBtn = els.modeToggle.querySelector('[data-mode="auto"]');
+    autoBtn.disabled = !available;
+    els.noDetectorHint.style.display = available ? "none" : "block";
+  }
+
   async function refreshStatus() {
     try {
       const res = await fetch("/api/status");
@@ -63,6 +72,9 @@
       els.lockBanner.classList.toggle("show", !!s.locked);
       if (typeof s.armed === "boolean" && s.armed !== armed) applyArmed(s.armed);
       if (typeof s.mode === "string" && s.mode !== mode) applyMode(s.mode);
+      if (typeof s.detection_available === "boolean" && s.detection_available !== detectionAvailable) {
+        applyDetectionAvailable(s.detection_available);
+      }
     } catch (err) {
       els.connDot.classList.add("offline");
     }

@@ -19,7 +19,10 @@ class TrackingController:
         self.lock_frames_required = lock_frames_required
         self.auto_fire_enabled = auto_fire_enabled
 
-        self.mode = "auto"  # допустимые значения: "auto" | "manual" (как в веб-API)
+        # Если детектор не передали (нет весов модели / не скачались и т.п.) -
+        # AUTO в принципе недоступен, стартуем и остаёмся в РУЧНОМ режиме.
+        self.detection_available = detector is not None
+        self.mode = "auto" if self.detection_available else "manual"
         self._lock_streak = 0
         self._running = False
         self._thread = None
@@ -34,6 +37,7 @@ class TrackingController:
             "tilt_angle": tilt_axis.angle,
             "armed": trigger.armed,
             "mode": self.mode,
+            "detection_available": self.detection_available,
         }
 
     def start(self):
@@ -50,6 +54,8 @@ class TrackingController:
     def set_mode(self, mode):
         if mode not in ("auto", "manual"):
             raise ValueError("mode must be 'auto' or 'manual'")
+        if mode == "auto" and not self.detection_available:
+            raise ValueError("no detector loaded (model weights missing) - manual mode only")
         self.mode = mode
         if mode == "manual":
             self.pan_axis.set_speed(0)
@@ -92,7 +98,7 @@ class TrackingController:
             target = None
             locked = False
 
-            if self.mode == "auto":
+            if self.mode == "auto" and self.detector is not None:
                 detections = self.detector.detect(frame)
                 if detections:
                     target = max(detections, key=lambda d: d.area)

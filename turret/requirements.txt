@@ -1,3 +1,6 @@
+# <5 закреплён намеренно: OpenCV 5.0 убрал cv2.dnn.readNetFromCaffe (Caffe-
+# импортёр из dnn выпилили), а PersonDetector в этом проекте на нём построен.
+# Не снимайте этот потолок версии, не переписав detector.py на другой формат.
 opencv-python-headless>=4.8,<5
 gpiozero>=2.0
 pigpio>=1.78

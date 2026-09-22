@@ -10,6 +10,13 @@ camera:
 detection:
   prototxt: "models/MobileNetSSD_deploy.prototxt"
   model: "models/MobileNetSSD_deploy.caffemodel"
+  # Если файлы выше уже лежат на диске - используются как есть, без сети.
+  # Если их нет (первый запуск / удалили) - при старте пробуем скачать
+  # отсюда; не получится (нет интернета) - турель запускается в РУЧНОМ
+  # режиме без детекции вместо падения. См. app/model_fetch.py.
+  prototxt_url: "https://raw.githubusercontent.com/chuanqi305/MobileNet-SSD/master/deploy.prototxt"
+  model_url: "https://raw.githubusercontent.com/chuanqi305/MobileNet-SSD/master/mobilenet_iter_73000.caffemodel"
+  download_timeout_seconds: 20
   confidence_threshold: 0.5
   resize: 300          # вход сети MobileNet-SSD, менять не нужно
 

@@ -5,6 +5,7 @@ import sys
 from app.camera import CameraStream
 from app.config import load_config
 from app.detector import PersonDetector
+from app.model_fetch import ensure_model_weights
 from app.motion.servo import TiltAxis
 from app.motion.stepper import StepperAxis
 from app.motion.trigger import Trigger
@@ -42,12 +43,35 @@ def main():
         height=cfg.camera.height, fps=cfg.camera.fps,
     ).start()
 
-    detector = PersonDetector(
-        prototxt=cfg.detection.prototxt,
-        model=cfg.detection.model,
-        confidence_threshold=cfg.detection.confidence_threshold,
-        resize=cfg.detection.resize,
+    weights_ready = ensure_model_weights(
+        prototxt_path=cfg.detection.prototxt,
+        model_path=cfg.detection.model,
+        prototxt_url=cfg.detection.prototxt_url,
+        model_url=cfg.detection.model_url,
+        timeout=cfg.detection.download_timeout_seconds,
     )
+
+    detector = None
+    if weights_ready:
+        try:
+            detector = PersonDetector(
+                prototxt=cfg.detection.prototxt,
+                model=cfg.detection.model,
+                confidence_threshold=cfg.detection.confidence_threshold,
+                resize=cfg.detection.resize,
+            )
+        except Exception as exc:
+            logger.warning(
+                "файлы весов есть, но модель не загрузилась (%s) - либо файл "
+                "повреждён, либо несовместимая версия OpenCV (нужен cv2.dnn."
+                "readNetFromCaffe, см. комментарий в requirements.txt); "
+                "турель запускается в РУЧНОМ режиме",
+                exc,
+            )
+            detector = None
+
+    if detector is None:
+        logger.warning("детектор недоступен - доступно только ручное управление (AUTO отключен)")
 
     pan_axis = StepperAxis(
         step_pin=cfg.gpio.stepper.step_pin,

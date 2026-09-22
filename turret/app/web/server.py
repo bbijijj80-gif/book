@@ -37,7 +37,10 @@ def create_app(controller, trigger, pan_axis, tilt_axis, tilt_center_angle):
         new_mode = (request.get_json(force=True) or {}).get("mode")
         if new_mode not in ("auto", "manual"):
             return jsonify({"error": "mode must be 'auto' or 'manual'"}), 400
-        controller.set_mode(new_mode)
+        try:
+            controller.set_mode(new_mode)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 409
         return jsonify({"mode": controller.mode})
 
     @app.route("/api/manual_move", methods=["POST"])
