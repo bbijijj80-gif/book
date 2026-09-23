@@ -97,6 +97,22 @@ void nxSetText(const char* objName, const String& value) {
   nxSendRaw(String(objName) + ".txt=\"" + escaped + "\"");
 }
 
+// Меняет цвет текста компонента (.pco) - используем, чтобы t_status реально
+// светился красным/зелёным по факту, как подсветка в браузерном интерфейсе,
+// а не просто менял слово. Значения - RGB565 (см. nextion-ui-spec.md).
+void nxSetColor(const char* objName, uint16_t rgb565) {
+  nxSendRaw(String(objName) + ".pco=" + String(rgb565));
+}
+
+const uint16_t COLOR_SAFE    = 9771;   // #22c55e - зелёный, как --safe в веб-интерфейсе
+const uint16_t COLOR_ARMED   = 64105;  // #ff4d4f - красный, как --danger в веб-интерфейсе
+const uint16_t COLOR_CONFIRM = 62885;  // янтарный - "ждёт подтверждения"
+
+void nxSetStatus(const String& text, uint16_t color) {
+  nxSetText("t_status", text);
+  nxSetColor("t_status", color);
+}
+
 // Читает одно событие касания с Nextion, если оно уже пришло целиком.
 // Формат пакета: 0x65 <page> <component> <event> 0xFF 0xFF 0xFF (7 байт).
 // event: 0x01 = нажатие, 0x00 = отпускание.
@@ -161,7 +177,7 @@ bool piGetStatus() {
   float tiltAngle = doc["tilt_angle"] | 0.0f;
 
   if (!armConfirmPending) {
-    nxSetText("t_status", knownArmed ? "ARMED" : "SAFE");
+    nxSetStatus(knownArmed ? "ARMED" : "SAFE", knownArmed ? COLOR_ARMED : COLOR_SAFE);
   }
   nxSetText("t_mode", knownMode == "auto" ? "AUTO" : "MANUAL");
   nxSetText("t_lock", locked ? "LOCK" : "-");
@@ -194,16 +210,16 @@ void handleArmButton() {
     armConfirmPending = false;
     bool wantArm = !knownArmed;
     piPostJson("/api/arm", String("{\"armed\":") + (wantArm ? "true" : "false") + "}");
-    nxSetText("t_status", wantArm ? "ARMED" : "SAFE");
+    nxSetStatus(wantArm ? "ARMED" : "SAFE", wantArm ? COLOR_ARMED : COLOR_SAFE);
   } else if (!knownArmed) {
     // Первое нажатие на взвод - просим подтверждения
     armConfirmPending = true;
     armConfirmStartedAt = now;
-    nxSetText("t_status", "CONFIRM?");
+    nxSetStatus("CONFIRM?", COLOR_CONFIRM);
   } else {
     // Снятие с взвода подтверждения не требует
     piPostJson("/api/arm", "{\"armed\":false}");
-    nxSetText("t_status", "SAFE");
+    nxSetStatus("SAFE", COLOR_SAFE);
   }
 }
 
@@ -304,7 +320,7 @@ void loop() {
   // Таймаут "зависшего" подтверждения взвода
   if (armConfirmPending && millis() - armConfirmStartedAt > ARM_CONFIRM_WINDOW_MS) {
     armConfirmPending = false;
-    nxSetText("t_status", knownArmed ? "ARMED" : "SAFE");
+    nxSetStatus(knownArmed ? "ARMED" : "SAFE", knownArmed ? COLOR_ARMED : COLOR_SAFE);
   }
 
   // Повторные импульсы наклона, пока кнопка ВВЕРХ/ВНИЗ удерживается
