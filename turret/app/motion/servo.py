@@ -8,16 +8,16 @@ class TiltAxis:
                  min_pulse_width=0.0005, max_pulse_width=0.0025, pin_factory=None):
         self.min_angle = min_angle
         self.max_angle = max_angle
+        self._angle = max(min_angle, min(max_angle, center_angle))
         self._servo = AngularServo(
             pin,
+            initial_angle=self._angle,
             min_angle=min_angle,
             max_angle=max_angle,
             min_pulse_width=min_pulse_width,
             max_pulse_width=max_pulse_width,
             pin_factory=pin_factory,
         )
-        self._angle = max(min_angle, min(max_angle, center_angle))
-        self._servo.angle = self._angle
 
     @property
     def angle(self):
