@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Автотурель — панель управления</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-dot" id="conn-dot"></span>
+        <h1>АВТОТУРЕЛЬ</h1>
+      </div>
+      <div class="telemetry">
+        <div class="tstat"><span class="tlabel">FPS</span><span class="tval" id="fps">--</span></div>
+        <div class="tstat"><span class="tlabel">ЦЕЛИ</span><span class="tval" id="targets">--</span></div>
+        <div class="tstat"><span class="tlabel">АЗИМУТ</span><span class="tval" id="pan-pos">--</span></div>
+        <div class="tstat"><span class="tlabel">НАКЛОН</span><span class="tval" id="tilt-angle">--</span>&deg;</div>
+      </div>
+    </header>
+
+    <main class="content">
+      <section class="video-wrap" id="video-wrap">
+        <img id="video" src="/video_feed" alt="видео с камеры">
+        <div class="lock-banner" id="lock-banner">ЗАХВАТ</div>
+      </section>
+
+      <aside class="panel">
+        <div class="card arm-card">
+          <div class="card-title">Состояние</div>
+          <button id="arm-toggle" class="arm-toggle safe">
+            <span class="arm-toggle-dot"></span>
+            <span id="arm-label">НЕ ВЗВЕДЕНО</span>
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Режим</div>
+          <div class="segmented" id="mode-toggle">
+            <button class="seg active" data-mode="auto">АВТО</button>
+            <button class="seg" data-mode="manual">РУЧНОЙ</button>
+          </div>
+          <div class="hint hint-warn" id="no-detector-hint" style="display:none">
+            Нет весов детектора — доступен только ручной режим
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Ручное управление</div>
+          <div class="joystick" id="joystick">
+            <div class="joystick-knob" id="joystick-knob"></div>
+          </div>
+          <div class="hint">Доступно в режиме РУЧНОЙ</div>
+        </div>
+
+        <div class="card actions">
+          <button class="btn" id="btn-center">ЦЕНТР</button>
+          <button class="btn btn-fire" id="btn-fire" disabled>ОГОНЬ</button>
+        </div>
+
+        <button class="estop" id="btn-estop">АВАРИЙНЫЙ СТОП</button>
+      </aside>
+    </main>
+  </div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

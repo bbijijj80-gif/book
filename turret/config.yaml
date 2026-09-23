@@ -1,0 +1,70 @@
+# Конфигурация автотурели (Raspberry Pi 4)
+# Единицы: время -> *_ms, углы -> градусы, скорость шагового мотора -> шаг/сек
+
+camera:
+  index: 0            # /dev/video0 - обычно единственная USB-камера (Razer Kiyo и т.п.)
+  width: 640
+  height: 480
+  fps: 30
+
+detection:
+  prototxt: "models/MobileNetSSD_deploy.prototxt"
+  model: "models/MobileNetSSD_deploy.caffemodel"
+  # Если файлы выше уже лежат на диске - используются как есть, без сети.
+  # Если их нет (первый запуск / удалили) - при старте пробуем скачать
+  # отсюда; не получится (нет интернета) - турель запускается в РУЧНОМ
+  # режиме без детекции вместо падения. См. app/model_fetch.py.
+  prototxt_url: "https://raw.githubusercontent.com/chuanqi305/MobileNet-SSD/master/deploy.prototxt"
+  model_url: "https://raw.githubusercontent.com/chuanqi305/MobileNet-SSD/master/mobilenet_iter_73000.caffemodel"
+  download_timeout_seconds: 20
+  confidence_threshold: 0.5
+  resize: 300          # вход сети MobileNet-SSD, менять не нужно
+
+gpio:
+  pin_factory: "pigpio"   # "pigpio" (плавнее, нужен `sudo systemctl enable --now pigpiod`) или "default"
+
+  stepper:                # NEMA17 через STEP/DIR-драйвер (A4988 / DRV8825 / TMC2209) - азимут влево/вправо
+    step_pin: 20
+    dir_pin: 21
+    enable_pin: 16
+    enable_active_low: true   # true для большинства STEP/DIR-драйверов (A4988/DRV8825/TMC2209)
+    min_steps_per_sec: 30
+    max_steps_per_sec: 900
+    soft_limit_steps: 1600    # программный ограничитель поворота от центра (защита проводов); null = без ограничения
+                               # подберите под микрошаг вашего драйвера (DIP-переключатели)
+
+  servo:                  # маленький сервопривод - наклон вверх/вниз
+    pin: 18                # аппаратный PWM0, лучший выбор для сервы
+    min_angle: 30
+    max_angle: 150
+    center_angle: 90
+    min_pulse_width: 0.0005
+    max_pulse_width: 0.0025
+
+  trigger:                 # реле/MOSFET-модуль, подключённый к цепи спуска Nerf-бластера
+    pin: 26
+    active_high: true       # false, если у вас плата реле с активным низким уровнем на IN
+    fire_duration_ms: 250   # сколько держать цепь спуска замкнутой на один выстрел
+    cooldown_ms: 900        # пауза между очередями (бережёт моторчик/шестерни бластера)
+    burst_count: 1          # выстрелов подряд за одно срабатывание
+    burst_interval_ms: 180  # пауза между выстрелами внутри очереди (если burst_count > 1)
+
+tracking:
+  pan_kp: 0.8
+  pan_ki: 0.0
+  pan_kd: 0.12
+  tilt_kp: 0.05
+  tilt_ki: 0.0
+  tilt_kd: 0.008
+  tilt_max_deg_per_frame: 6.0
+  lock_threshold_px: 28        # цель считается "захваченной", если её центр ближе этого к центру кадра
+  lock_frames_required: 4      # столько кадров подряд цель должна быть захвачена перед выстрелом
+
+safety:
+  start_armed: false           # ВСЕГДА false: старт только в DISARMED, взвод - вручную из интерфейса
+  auto_fire_enabled: true      # разрешить автоматический выстрел при захвате цели (режим AUTO + ARMED)
+  max_continuous_fire_seconds: 4   # аварийная защита от "залипания" цепи спуска
+
+web:
+  host: "0.0.0.0"
+  port: 8080

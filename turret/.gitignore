@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+
+# Веса модели скачиваются через scripts/download_model.sh, в git не хранятся.
+models/*.prototxt
+models/*.caffemodel

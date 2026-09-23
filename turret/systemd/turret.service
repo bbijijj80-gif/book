@@ -1,0 +1,17 @@
+[Unit]
+Description=Автотурель - слежение и наведение по человеку (пан/тилт)
+After=network-online.target pigpiod.service
+Wants=network-online.target
+# Удалите следующую строку, если не используете фабрику пинов pigpio.
+Requires=pigpiod.service
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/book/turret
+ExecStart=/home/pi/book/turret/.venv/bin/python /home/pi/book/turret/main.py
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
