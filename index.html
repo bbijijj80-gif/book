@@ -2,9 +2,18 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Голосовой синтезатор</title>
   <meta name="description" content="Синтезатор речи с интонацией без ИИ: 5 системных голосов и создание своего голоса по записи.">
+  <meta name="theme-color" content="#2f6fdb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Голос">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -21,6 +30,15 @@
   </header>
 
   <main class="wrap">
+    <div id="iosInstall" class="card install hidden">
+      <button id="iosInstallClose" class="close" aria-label="Закрыть">×</button>
+      <b>Установите на iPhone</b>
+      <ol>
+        <li>Нажмите кнопку «Поделиться» <span class="share-ico" aria-hidden="true">⬆︎</span> внизу Safari.</li>
+        <li>Выберите «На экран „Домой“» и нажмите «Добавить».</li>
+      </ol>
+      <p class="hint">Синтезатор появится на экране как приложение и будет работать без интернета. Совет: прибавьте громкость — звук идёт и в беззвучном режиме.</p>
+    </div>
     <!-- ================= СИНТЕЗ ================= -->
     <section id="tab-synth" class="panel active">
       <div class="card">

@@ -4,6 +4,9 @@
   const VS = window.VoiceSynth;
   const { DSP, Voices, Analyzer } = VS;
   const $ = (id) => document.getElementById(id);
+  const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const STANDALONE = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
 
   const PHRASE = 'Съешь же ещё этих мягких французских булок, да выпей чаю. ' +
     'Широкая электрификация южных губерний даст мощный толчок подъёму сельского хозяйства. ' +
@@ -30,11 +33,28 @@
   // ---------------- Воспроизведение ----------------
   let actx = null;
   let current = null; // { src, startedAt, plan }
+  // iOS: звук играет, даже если включён беззвучный режим (Safari 16.4+).
+  function audioSession(type) {
+    try { if (navigator.audioSession) navigator.audioSession.type = type; } catch (e) { /* не поддерживается */ }
+  }
+  // Контекст создаётся и «разблокируется» синхронно внутри обработчика нажатия —
+  // иначе iOS Safari не даст ему играть.
   function ctx() {
-    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
-    if (actx.state === 'suspended') actx.resume();
+    if (!actx) {
+      audioSession('playback');
+      actx = new (window.AudioContext || window.webkitAudioContext)();
+      const b = actx.createBuffer(1, 1, 22050);
+      const s = actx.createBufferSource();
+      s.buffer = b;
+      s.connect(actx.destination);
+      s.start(0);
+    }
+    if (actx.state !== 'running') actx.resume();
     return actx;
   }
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && actx && actx.state !== 'running') actx.resume();
+  });
   function stop() {
     if (current && current.src) { try { current.src.stop(); } catch (e) { /* уже остановлен */ } }
     current = null;
@@ -128,6 +148,7 @@
   }
 
   function speak() {
+    ctx();
     const btn = $('btnSpeak');
     btn.disabled = true;
     setTimeout(() => {
@@ -153,9 +174,21 @@
     const r = synthesize();
     if (!r) return;
     drawPitch(r);
-    download(new Blob([DSP.encodeWav(r.samples, r.sampleRate)], { type: 'audio/wav' }), 'rech-' + r.voice.id + '.wav');
+    saveFile(new Blob([DSP.encodeWav(r.samples, r.sampleRate)], { type: 'audio/wav' }), 'rech-' + r.voice.id + '.wav');
   });
   $('showTr').addEventListener('change', (e) => $('trView').classList.toggle('hidden', !e.target.checked));
+
+  // На iPhone файл удобнее всего сохранить через «Поделиться» → «Сохранить в Файлы».
+  function saveFile(blob, name) {
+    try {
+      const file = new File([blob], name, { type: blob.type });
+      if (IS_IOS && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: name }).catch(() => { /* пользователь закрыл меню */ });
+        return;
+      }
+    } catch (e) { /* File/share недоступны — обычная загрузка */ }
+    download(blob, name);
+  }
 
   function download(blob, name) {
     const a = document.createElement('a');
@@ -240,33 +273,45 @@
 
   // ---------------- Запись с микрофона ----------------
   class Recorder {
+    // Всё до первого await выполняется прямо в обработчике нажатия — это важно для iOS.
     async start(onLevel) {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Браузер не даёт доступ к микрофону. Откройте страницу через https:// или http://localhost, либо загрузите аудиофайл.');
+        throw new Error(location.protocol === 'https:' || location.hostname === 'localhost'
+          ? 'Браузер не даёт доступ к микрофону. Можно загрузить аудиофайл.'
+          : 'Микрофон работает только на странице, открытой по https:// (например, через GitHub Pages). Можно загрузить аудиофайл.');
       }
-      this.stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
-      });
-      this.ac = new (window.AudioContext || window.webkitAudioContext)();
-      if (this.ac.state === 'suspended') await this.ac.resume();
-      this.fs = this.ac.sampleRate;
+      audioSession('play-and-record');
+      this.ac = ctx();
       this.chunks = [];
+      try {
+        this.stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
+        });
+      } catch (e) {
+        audioSession('playback');
+        if (e && e.name === 'NotAllowedError') throw new Error('доступ запрещён. На iPhone: Настройки → Safari → Микрофон → «Разрешить».');
+        throw e;
+      }
+      if (this.ac.state !== 'running') await this.ac.resume();
+      this.fs = this.ac.sampleRate;
       const src = this.ac.createMediaStreamSource(this.stream);
       const proc = this.ac.createScriptProcessor(4096, 1, 1);
+      const mute = this.ac.createGain();
+      mute.gain.value = 0;
       proc.onaudioprocess = (e) => {
         const d = e.inputBuffer.getChannelData(0);
         this.chunks.push(new Float32Array(d));
         if (onLevel) onLevel(DSP.rms(d));
       };
       src.connect(proc);
-      proc.connect(this.ac.destination);
-      this.proc = proc;
-      this.src = src;
+      proc.connect(mute);
+      mute.connect(this.ac.destination);
+      this.nodes = [src, proc, mute];
     }
     async stop() {
-      if (this.proc) { this.proc.disconnect(); this.src.disconnect(); }
+      if (this.nodes) this.nodes.forEach((nd) => { try { nd.disconnect(); } catch (e) { /* уже отключён */ } });
       if (this.stream) this.stream.getTracks().forEach((t) => t.stop());
-      if (this.ac) await this.ac.close();
+      audioSession('playback');
       const n = this.chunks.reduce((s, c) => s + c.length, 0);
       const out = new Float32Array(n);
       let o = 0;
@@ -285,7 +330,10 @@
 
   async function decodeFile(file) {
     const buf = await file.arrayBuffer();
-    const ab = await ctx().decodeAudioData(buf);
+    const ab = await new Promise((resolve, reject) => {
+      const p = ctx().decodeAudioData(buf, resolve, (e) => reject(e || new Error('формат не поддерживается')));
+      if (p && p.catch) p.catch(reject);
+    });
     const n = ab.length;
     const mono = new Float32Array(n);
     for (let ch = 0; ch < ab.numberOfChannels; ch++) {
@@ -510,7 +558,7 @@
       const mk = (t, fn, cls) => { const b = document.createElement('button'); b.className = 'btn ' + (cls || ''); b.textContent = t; b.addEventListener('click', fn); acts.appendChild(b); };
       mk('▶', () => { const r = VS.speak('Привет! Это голос ' + v.name + '. Как он вам?', v, {}); play(r.samples, r.sampleRate); });
       mk('Выбрать', () => { selectedId = v.id; store('voiceSynth.selected', v.id); renderVoiceList(); document.querySelector('.tab[data-tab=synth]').click(); });
-      mk('Экспорт', () => download(new Blob([JSON.stringify(v, null, 2)], { type: 'application/json' }), 'golos-' + v.name.replace(/[^\wа-яё-]+/gi, '_') + '.json'), 'ghost');
+      mk('Экспорт', () => saveFile(new Blob([JSON.stringify(v, null, 2)], { type: 'application/json' }), 'golos-' + v.name.replace(/[^\wа-яё-]+/gi, '_') + '.json'), 'ghost');
       mk('Удалить', () => { if (confirm('Удалить голос «' + v.name + '»?')) { Voices.removeCustom(v.id); renderCustomList(); renderVoiceList(); } }, 'ghost');
       row.append(info, acts);
       box.appendChild(row);
@@ -532,6 +580,14 @@
     }
     e.target.value = '';
   });
+
+  // Подсказка «установить на iPhone» и офлайн-режим
+  if (IS_IOS && !STANDALONE) $('iosInstall').classList.remove('hidden');
+  $('iosInstallClose').addEventListener('click', () => { $('iosInstall').classList.add('hidden'); store('voiceSynth.iosHint', '0'); });
+  if (store('voiceSynth.iosHint') === '0') $('iosInstall').classList.add('hidden');
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch((e) => console.warn('Офлайн-режим недоступен:', e));
+  }
 
   renderVoiceList();
   // Первичный расчёт графика без воспроизведения (автовоспроизведение браузеры запрещают)
