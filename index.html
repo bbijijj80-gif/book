@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Голосовой синтезатор</title>
+  <meta name="description" content="Синтезатор речи с интонацией без ИИ: 5 системных голосов и создание своего голоса по записи.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <h1>Голосовой синтезатор</h1>
+      <p class="sub">Формантный синтез речи с интонацией. Без ИИ и без интернета — всё считается в браузере по правилам фонетики.</p>
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="synth" role="tab">Синтез речи</button>
+        <button class="tab" data-tab="clone" role="tab">Создать свой голос</button>
+        <button class="tab" data-tab="voices" role="tab">Мои голоса</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- ================= СИНТЕЗ ================= -->
+    <section id="tab-synth" class="panel active">
+      <div class="card">
+        <label class="lbl" for="text">Текст</label>
+        <textarea id="text" rows="5" spellcheck="false">Привет! Я умею говорить с интонацией. Вы меня слышите? Где вы сейчас находитесь? Какой сегодня прекрасный день!</textarea>
+        <div class="examples" id="examples"></div>
+        <p class="hint">Ударение можно указать знаком <code>+</code> перед гласной (<code>зам+ок</code>) или заглавной буквой (<code>зАмок</code>).
+          Знаки препинания управляют интонацией: «?» — вопрос, «!» — восклицание, «,» — незавершённость.</p>
+      </div>
+
+      <div class="card">
+        <div class="lbl">Голос</div>
+        <div class="voices" id="voiceList"></div>
+      </div>
+
+      <div class="card controls">
+        <div class="ctl">
+          <label for="speed">Скорость <output id="speedOut">1.00</output></label>
+          <input type="range" id="speed" min="0.5" max="1.8" step="0.05" value="1">
+        </div>
+        <div class="ctl">
+          <label for="pitch">Высота <output id="pitchOut">0</output> пт</label>
+          <input type="range" id="pitch" min="-8" max="8" step="1" value="0">
+        </div>
+        <div class="ctl">
+          <label for="expr">Выразительность <output id="exprOut">1.00</output></label>
+          <input type="range" id="expr" min="0" max="2" step="0.05" value="1">
+        </div>
+        <div class="ctl">
+          <label for="volume">Громкость <output id="volumeOut">0.90</output></label>
+          <input type="range" id="volume" min="0.1" max="1" step="0.05" value="0.9">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="btnSpeak" class="btn primary">▶ Произнести</button>
+        <button id="btnStop" class="btn">■ Стоп</button>
+        <button id="btnWav" class="btn">⬇ Скачать WAV</button>
+        <label class="chk"><input type="checkbox" id="showTr"> транскрипция</label>
+      </div>
+
+      <div class="card">
+        <div class="lbl">Мелодика (частота основного тона)</div>
+        <canvas id="pitchCanvas" height="200"></canvas>
+        <div id="stressView" class="mono small"></div>
+        <div id="trView" class="mono small hidden"></div>
+      </div>
+    </section>
+
+    <!-- ================= СВОЙ ГОЛОС ================= -->
+    <section id="tab-clone" class="panel">
+      <ol class="steps" id="steps">
+        <li data-step="1" class="current">Тишина</li>
+        <li data-step="2">Фраза</li>
+        <li data-step="3">Гласные</li>
+        <li data-step="4">Готово</li>
+      </ol>
+
+      <div class="card step" id="step1">
+        <h2>Вы в тихом месте?</h2>
+        <p>Для хорошего результата нужна тишина: выключите музыку и телевизор, закройте окно, держите микрофон на расстоянии 15–30 см.</p>
+        <p>Нажмите «Проверить тишину» и <b>помолчите 3 секунды</b> — мы измерим уровень фонового шума.</p>
+        <div class="actions">
+          <button id="btnNoise" class="btn primary">Да, проверить тишину</button>
+          <button id="btnSkipNoise" class="btn ghost">Пропустить проверку</button>
+        </div>
+        <div class="meter"><div class="bar" id="meter1"></div></div>
+        <div id="noiseResult" class="result"></div>
+      </div>
+
+      <div class="card step hidden" id="step2">
+        <h2>Прочитайте фразу</h2>
+        <p>Своим голосом или другим — как хотите, чтобы звучал новый голос. Читайте естественно, в обычном темпе, с интонацией (вопрос — как вопрос).</p>
+        <blockquote id="phraseText" class="phrase"></blockquote>
+        <div class="actions">
+          <button id="btnRec2" class="btn rec">● Начать запись</button>
+          <label class="btn ghost file">Загрузить аудиофайл<input type="file" id="file2" accept="audio/*" hidden></label>
+        </div>
+        <div class="meter"><div class="bar" id="meter2"></div></div>
+        <div id="rec2Info" class="result"></div>
+      </div>
+
+      <div class="card step hidden" id="step3">
+        <h2>Протяжно произнесите гласные</h2>
+        <p>Скажите каждую гласную <b>протяжно (около секунды)</b>, делая паузу между ними:</p>
+        <div class="vowels">А … О … У … Э … И … Ы</div>
+        <p class="hint">Так мы точно измерим форманты — «отпечаток» формы вашего речевого тракта. Шаг можно пропустить: тогда тембр оценится по фразе.</p>
+        <div class="actions">
+          <button id="btnRec3" class="btn rec">● Начать запись</button>
+          <label class="btn ghost file">Загрузить аудиофайл<input type="file" id="file3" accept="audio/*" hidden></label>
+          <button id="btnSkipVowels" class="btn ghost">Пропустить</button>
+        </div>
+        <div class="meter"><div class="bar" id="meter3"></div></div>
+        <div id="rec3Info" class="result"></div>
+      </div>
+
+      <div class="card step hidden" id="step4">
+        <h2>Голос готов</h2>
+        <div id="voiceReport"></div>
+        <label class="lbl" for="voiceName">Название голоса</label>
+        <input id="voiceName" type="text" maxlength="60" value="Мой голос">
+        <label class="lbl" for="testText">Проверочная фраза</label>
+        <input id="testText" type="text" value="Здравствуйте! Это мой новый синтезированный голос. Похоже получилось?">
+        <div class="actions">
+          <button id="btnTest" class="btn">▶ Прослушать</button>
+          <button id="btnPlayOrig" class="btn ghost">▶ Оригинальная запись</button>
+          <button id="btnSave" class="btn primary">Сохранить голос</button>
+          <button id="btnRestart" class="btn ghost">Начать заново</button>
+        </div>
+        <div id="saveInfo" class="result"></div>
+      </div>
+    </section>
+
+    <!-- ================= МОИ ГОЛОСА ================= -->
+    <section id="tab-voices" class="panel">
+      <div class="card">
+        <h2>Сохранённые голоса</h2>
+        <p class="hint">Голоса хранятся только в этом браузере. Их можно экспортировать в файл и загрузить на другом устройстве.</p>
+        <div id="customList"></div>
+        <div class="actions">
+          <label class="btn ghost file">Импортировать голос (.json)<input type="file" id="importFile" accept=".json,application/json" hidden></label>
+        </div>
+        <div id="importInfo" class="result"></div>
+      </div>
+      <div class="card">
+        <h2>Как это работает</h2>
+        <ul class="about">
+          <li><b>Текст → звуки.</b> Числа читаются прописью, ставится ударение (словарь, суффиксы, «ё», ваша разметка), применяются правила русской орфоэпии: аканье, иканье, оглушение, ассимиляция, мягкость.</li>
+          <li><b>Интонация.</b> Мелодика строится по интонационным конструкциям русского языка (ИК-1…ИК-5): повествование, вопросы с вопросительным словом и без, сопоставление «А ты?», восклицание, незавершённость перед запятой; плюс деклинация, фразовые акценты, удлинение перед паузой.</li>
+          <li><b>Звук.</b> Формантный синтезатор (схема Клатта): голосовой источник с джиттером и придыханием, резонаторы речевого тракта, шумовые источники для согласных.</li>
+          <li><b>Свой голос.</b> По записи измеряются высота и диапазон тона (алгоритм YIN), форманты гласных (линейное предсказание), яркость тембра, придыхание и темп. Там, где нужно, параметры подбираются «анализом через синтез»: синтезатор произносит ту же фразу, и параметры подгоняются, пока измерения не совпадут.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap foot">Работает офлайн. Запись с микрофона не покидает ваш компьютер.</footer>
+
+  <script src="js/dsp.js"></script>
+  <script src="js/phonemes.js"></script>
+  <script src="js/g2p.js"></script>
+  <script src="js/prosody.js"></script>
+  <script src="js/synth.js"></script>
+  <script src="js/voices.js"></script>
+  <script src="js/analyzer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
