@@ -1,0 +1,6 @@
+# torch ставится отдельно (CPU-версия), см. run.bat
+customtkinter>=5.2
+datasets>=2.19
+tokenizers>=0.19
+numpy
+safetensors
