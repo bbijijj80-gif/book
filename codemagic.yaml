@@ -1,0 +1,73 @@
+# Сборка iOS-приложения «AR Объекты» в Codemagic.
+# Проект лежит в папке ARObjects/, поэтому пути указаны относительно корня репозитория.
+
+definitions:
+  env: &env
+    vars:
+      XCODE_PROJECT: "ARObjects/ARObjects.xcodeproj"
+      XCODE_SCHEME: "ARObjects"
+    xcode: latest
+
+workflows:
+  # 1) Работает сразу, без Apple Developer аккаунта.
+  #    Проверяет, что код собирается, и выдаёт НЕподписанный .ipa
+  #    (его можно поставить на свой iPhone через Sideloadly / AltStore).
+  ios-unsigned:
+    name: iOS — сборка без подписи
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment: *env
+    scripts:
+      - name: Сборка
+        script: |
+          xcodebuild build \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build/dd \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+      - name: Упаковка неподписанного .ipa
+        script: |
+          mkdir -p build/ipa/Payload
+          cp -R build/dd/Build/Products/Release-iphoneos/ARObjects.app build/ipa/Payload/
+          cd build/ipa && zip -qry ARObjects-unsigned.ipa Payload
+    artifacts:
+      - build/ipa/*.ipa
+
+  # 2) Подписанная сборка для TestFlight. Нужен платный Apple Developer аккаунт.
+  #    Перед запуском:
+  #      - в Codemagic: Teams → Integrations → App Store Connect — добавьте API-ключ
+  #        и впишите его имя ниже вместо codemagic_key;
+  #      - замените com.example.ARObjects на свой Bundle ID (здесь и в Xcode-проекте),
+  #        приложение с таким Bundle ID должно быть создано в App Store Connect.
+  ios-testflight:
+    name: iOS — TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    integrations:
+      app_store_connect: codemagic_key
+    environment:
+      <<: *env
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.example.ARObjects
+    scripts:
+      - name: Профили подписи
+        script: xcode-project use-profiles
+      - name: Номер сборки
+        script: |
+          cd ARObjects
+          agvtool new-version -all $(($PROJECT_BUILD_NUMBER + 1))
+      - name: Сборка .ipa
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
